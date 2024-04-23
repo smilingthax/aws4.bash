@@ -1,0 +1,37 @@
+_hexStr() { # data
+  local LC_ALL=C
+  local i len=${#1} ch
+  for (( i = 0; i < len; i++ )); do
+    ch=${1:i:1}
+    printf '%02x' "'$ch"
+  done
+}
+
+_uriEncodeStr() { # data
+  local LC_ALL=C
+  local i len=${#1} ch
+  for (( i = 0; i < len; i++ )); do
+    ch=${1:i:1}
+    case "$ch" in
+      [-_.~A-Za-z0-9]) printf '%s' "$ch" ;;
+      *) printf '%%%02X' "'$ch" ;;
+    esac
+  done
+}
+
+_trimStr() { # string
+  local str=$1
+  str="${str#"${str%%[![:space:]]*}"}"
+  str="${str%"${str##*[![:space:]]}"}"
+  printf '%s' "$str"
+}
+
+_lowercaseStr() { # string
+#  local LC_ALL=C       # TODO?
+  printf '%s' "$1" | tr "[:upper:]" "[:lower:]"
+}
+
+# _hexStr "asdf"
+# _uriEncodeStr "xx&x/x"
+# _trimStr $' \n  a\nb\t' | xxd -g 1
+# _lowercaseStr "AbCdÄ"
