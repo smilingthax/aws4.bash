@@ -4,6 +4,7 @@
 
 _sortedHeaders() { # headers
   local headers=$1
+  local key value
   printf '%s\n' "${headers%$'\n'}" | while IFS=':' read -r key value; do
 ##    printf '%s:%s\n' "$key" "$value"    # TODO? lowercase(key)=trim(value)
     printf '%s:%s\n' "$(_lowercaseStr "$key")" "$(_trimStr "$value")"

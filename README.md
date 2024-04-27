@@ -9,6 +9,7 @@
 Requires:
 * Bash 3
 * date, cut
+* sort, tr
 * openssl
 * xxd (could easily be replaced)
 * (curl - or similar, to actually use the signature...)

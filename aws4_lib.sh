@@ -24,6 +24,17 @@ _hexStr() { # data
   printf '%s' "$1" | xxd -p -c 256
 }
 
+_trimStr() { # string
+  local str=$1
+  str="${str#"${str%%[![:space:]]*}"}"
+  str="${str%"${str##*[![:space:]]}"}"
+  printf '%s' "$str"
+}
+
+_lowercaseStr() { # string
+  printf '%s' "$1" | tr "[:upper:]" "[:lower:]"
+}
+
 _dateTime() {
   date -u +'%Y%m%dT%H%M%SZ'
 }
@@ -38,18 +49,30 @@ _signingKey() { # region service accessSecret date
   _hmacStr "$key3" "aws4_request"
 }
 
+# query can be &-separate or \n-separated
+_sortedQuery() { # query
+  local query=$1
+
+  # Trick: -u deduplicates empty lines to single one at the beginning. Also, $() removes trailing \n.
+  local sorted_lines=$(printf '%s' "$query" | tr "&" "\n" | sort -u)
+  printf '%s' "${sorted_lines#$'\n'}" | tr "\n" "&"
+}
+
 # writes to $sortedHeaders, to preserve trailing newline
 _sortedHeaders() { # headers
-  local sortedSignedHeaders=$1
-  printf -v sortedHeaders '%s\n' "${sortedSignedHeaders%$'\n'}"
+  local headers=$1
+  printf -v sortedHeaders '%s\n' "$(
+    local key value
+    printf '%s\n' "${headers%$'\n'}" | while IFS=':' read -r key value; do
+      printf '%s:%s\n' "$(_lowercaseStr "$key")" "$(_trimStr "$value")"
+    done | sort)"
 }
 
 _headerNames() { # sortedHeaders
-  local key value sep=
-  printf '%s' "$1" | while IFS=':' read -r key value; do
-    printf '%s%s' "$sep" "$key"
-    sep=';'
-  done
+  local IFS=$'\n'
+  set -- $1
+  IFS=$';'
+  printf '%s' "${*/:*/}"
 }
 
 _aws4signature() { # region service scope accessSecret dateTime date canonicalRequestHash
@@ -70,19 +93,21 @@ _aws4request() { # method path sortedQuery sortedHeaders signedHeaders payloadHa
 
 # (unused/debug)
 # input: requestPayload
-aws4request() { # method path sortedQuery sortedSignedHeaders
-  local method=$1 path=$2 sortedQuery=$3 sortedSignedHeaders=$4
+aws4request() { # method path query headers
+  local method=$1 path=$2 query=$3 headers=$4
 
   # FIXME... also: sortedQuery is not just the input query, but (potentially) the X-Amz-* auth params...
   local sortedHeaders
-  _sortedHeaders "$sortedSignedHeaders"
+  _sortedHeaders "$headers"
   local signedHeaders=$(_headerNames "$sortedHeaders")
+
+  local sortedQuery=$(_sortedQuery "$query")
 
   _aws4request "$method" "$path" "$sortedQuery" "$sortedHeaders" "$signedHeaders" "$(_sha256)"
 }
 
-_aws4sign() { # method path sortedQuery sortedSignedHeaders  region service accessKey accessSecret dateTime  payloadHash  [asQuery=0]
-  local method=$1 path=$2 sortedQuery=$3 sortedSignedHeaders=$4
+_aws4sign() { # method path query headers  region service accessKey accessSecret dateTime  payloadHash  [asQuery=0]
+  local method=$1 path=$2 query=$3 headers=$4
   local region=$5 service=$6 accessKey=$7 accessSecret=$8 dateTime=$9
   local payloadHash=${10} asQuery=${11:-0}
 
@@ -91,36 +116,36 @@ _aws4sign() { # method path sortedQuery sortedSignedHeaders  region service acce
   local credential="$accessKey/$scope"
 
   local sortedHeaders
-  _sortedHeaders "$sortedSignedHeaders"
+  _sortedHeaders "$headers"
   local signedHeaders=$(_headerNames "$sortedHeaders")
 
-  local authquery= query
+  local authquery=
   if (( asQuery != 0 )); then
     printf -v authquery 'X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=%s&X-Amz-Date=%s&X-Amz-SignedHeaders=%s' "${credential//\//%2F}" "$dateTime" "$signedHeaders"
   fi
-  printf -v query '%s%s%s' "$authquery" "${sortedQuery:+&}" "$sortedQuery"
+  local sortedQuery=$(_sortedQuery "$authquery&$query")
 
-  local canonicalRequestHash=$(_aws4request "$method" "$path" "$query" "$sortedHeaders" "$signedHeaders" "$payloadHash" | _sha256)
+  local canonicalRequestHash=$(_aws4request "$method" "$path" "$sortedQuery" "$sortedHeaders" "$signedHeaders" "$payloadHash" | _sha256)
   local signature=$(_aws4signature "$region" "$service" "$scope" "$accessSecret" "$dateTime" "$date" "$canonicalRequestHash")
 
   if (( asQuery != 0 )); then
-    printf '%s&X-Amz-Signature=%s' "$query" "$signature"
+    printf '%s&X-Amz-Signature=%s' "$sortedQuery" "$signature"
   else
     printf "Authorization: AWS4-HMAC-SHA256 Credential=%s, SignedHeaders=%s, Signature=%s\n" "$credential" "$signedHeaders" "$signature"
-    printf '%s' "$sortedSignedHeaders"
+    printf '%s' "$headers"
   fi
 }
 
 # input: requestPayload
-# sortedQuery: "a=b&c=d&..."  (NOTE: should not contain any X-Amz-*, to not interfere with _prepended_ authquery [uppercase before lowercase!])
-# sortedSignedHeaders: "k1:v1\nk2:v2\n..."  w/ lowercase keys and no spaces, sorted by key
+# query: "a=b&c=d&..." or "a=b\nc=d..."
+# headers: "k1: v1\nk2: v2\n..."
 # dateTime: "20240101T10:00:00Z"  (-> from $(_dateTime), also in date / x-amz-date header!)
-aws4sign() { # method path sortedQuery sortedSignedHeaders  region service accessKey accessSecret dateTime [asQuery=0]
-  local method=$1 path=$2 sortedQuery=$3 sortedSignedHeaders=$4
+aws4sign() { # method path query headers  region service accessKey accessSecret dateTime [asQuery=0]
+  local method=$1 path=$2 query=$3 headers=$4
   local region=$5 service=$6 accessKey=$7 accessSecret=$8 dateTime=$9
   local asQuery=${10}
 
   local payloadHash=$(_sha256)
-  _aws4sign "$method" "$path" "$sortedQuery" "$sortedSignedHeaders" "$region" "$service" "$accessKey" "$accessSecret" "$dateTime" "$payloadHash" "$asQuery"
+  _aws4sign "$method" "$path" "$query" "$headers" "$region" "$service" "$accessKey" "$accessSecret" "$dateTime" "$payloadHash" "$asQuery"
 }
 
