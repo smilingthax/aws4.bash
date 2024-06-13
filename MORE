@@ -7,13 +7,14 @@ _hexStr() { # data
   done
 }
 
-_uriEncodeStr() { # data
+_uriEncodeStr() { # data [keepSlash=0]
   local LC_ALL=C
   local i len=${#1} ch
   for (( i = 0; i < len; i++ )); do
     ch=${1:i:1}
     case "$ch" in
       [-_.~A-Za-z0-9]) printf '%s' "$ch" ;;
+      /) (( $2 != 0 )) && printf '/' || printf '%%2F' ;;
       *) printf '%%%02X' "'$ch" ;;
     esac
   done
@@ -32,6 +33,7 @@ _lowercaseStr() { # string
 }
 
 # _hexStr "asdf"
-# _uriEncodeStr "xx&x/x"
+# _uriEncodeStr "x/xx&x"
+# _uriEncodeStr "x/xx&x" 1
 # _trimStr $' \n  a\nb\t' | xxd -g 1
 # _lowercaseStr "AbCdÄ"
