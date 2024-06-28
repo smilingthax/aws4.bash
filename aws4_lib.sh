@@ -35,6 +35,19 @@ _lowercaseStr() { # string
   printf '%s' "$1" | tr "[:upper:]" "[:lower:]"
 }
 
+_uriEncodeStr() { # data [keepSlash=0]
+  local LC_ALL=C
+  local i len=${#1} ch
+  for (( i = 0; i < len; i++ )); do
+    ch=${1:i:1}
+    case "$ch" in
+      [-_.~A-Za-z0-9]) printf '%s' "$ch" ;;
+      /) (( $2 != 0 )) && printf '/' || printf '%%2F' ;;
+      *) printf '%%%02X' "'$ch" ;;
+    esac
+  done
+}
+
 _dateTime() {
   date -u +'%Y%m%dT%H%M%SZ'
 }
@@ -96,11 +109,11 @@ _aws4request() { # method path sortedQuery sortedHeaders signedHeaders payloadHa
 aws4request() { # method path query headers
   local method=$1 path=$2 query=$3 headers=$4
 
-  # FIXME... also: sortedQuery is not just the input query, but (potentially) the X-Amz-* auth params...
   local sortedHeaders
   _sortedHeaders "$headers"
   local signedHeaders=$(_headerNames "$sortedHeaders")
 
+  # FIXME?! query is not just the input query, but (potentially) the X-Amz-* auth params..., esp. X-Amz-SignedHeaders
   local sortedQuery=$(_sortedQuery "$query")
 
   _aws4request "$method" "$path" "$sortedQuery" "$sortedHeaders" "$signedHeaders" "$(_sha256)"

@@ -15,9 +15,9 @@ s3_get() { # bucket path [query=]
   local host="${bucket:+$bucket.}s3.$AWS_REGION.amazonaws.com"
   local dateTime=$(_dateTime)
 
-  local headers="host:$host
-x-amz-content-sha256:$(_sha256Str '')
-x-amz-date:$dateTime"
+  local headers="Host: $host
+x-amz-content-sha256: $(_sha256Str '')
+x-amz-date: $dateTime"
 
   local fullHeaders=$(printf '' | aws4sign "GET" "$path" "$query" "$headers" "$AWS_REGION" "s3" "$AWS_ACCESS_KEY" "$AWS_ACCESS_SECRET" "$dateTime")
 
