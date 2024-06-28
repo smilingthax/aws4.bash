@@ -4,6 +4,8 @@
 
 # https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html
 
+#_aws4debug=0
+
 _hmac() { # hexkey
   openssl dgst -sha256 -mac HMAC -macopt "hexkey:$1" -hex -r | cut -d" " -f 1
 }
@@ -93,6 +95,7 @@ _aws4signature() { # region service scope accessSecret dateTime date canonicalRe
 
   local stringToSign
   printf -v stringToSign 'AWS4-HMAC-SHA256\n%s\n%s\n%s' "$dateTime" "$scope" "$canonicalRequestHash"
+  (( _aws4debug > 0 )) && printf 'stringToSign:\n%s\n' "$stringToSign" >& 2
 
   local signingKey=$(_signingKey "$region" "$service" "$accessSecret" "$date")
   _hmacStr "$signingKey" "$stringToSign"
@@ -102,6 +105,7 @@ _aws4request() { # method path sortedQuery sortedHeaders signedHeaders payloadHa
   local method=$1 path=$2 sortedQuery=$3 sortedHeaders=$4 signedHeaders=$5 payloadHash=$6
 
   printf '%s\n%s\n%s\n%s\n%s\n%s' "$method" "$path" "$sortedQuery" "$sortedHeaders" "$signedHeaders" "$payloadHash"
+  (( _aws4debug > 0 )) && printf '%s\n%s\n%s\n%s\n%s\n%s\n' "$method" "$path" "$sortedQuery" "$sortedHeaders" "$signedHeaders" "$payloadHash" >& 2
 }
 
 # (unused/debug)
