@@ -7,6 +7,14 @@ _hexStr() { # data
   done
 }
 
+# call curl w/ multi-line headers without using stdin (i.e. -H "@-", which is not even supported < 7.55)
+_curl() { # headers ...
+  local headers=$1
+  shift
+  local hargs=$(IFS=$'\n'; for i in $headers; do printf '%s\n' "$i" | sed "s/'/'\\\\''/g; 1s/^/-H '/; \$s/\$/' \\\\/"; done; echo ' ')
+  eval "curl $hargs \"\$@\""
+}
+
 # _hexStr "asdf"
 # _uriEncodeStr "x/xx&x"
 # _uriEncodeStr "x/xx&x" 1
