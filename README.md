@@ -4,15 +4,16 @@
 
 ## Possible TODOs
 * Support any posix shell (`/bin/sh`) w/ local, cut ?
-* lowercase/trim/sort headers, encode query strings ? (adds dependency: tr)
+* Better support for `AWS_SESSION_TOKEN`?  
+  Currently, `X-Amz-Security-Token` must be set manually (headers/query)...
 
 Requires:
 * Bash 3
 * date, cut
 * sort, tr
 * openssl
-* xxd (could easily be replaced)
-* (curl - or similar, to actually use the signature...)
+* xxd (could easily be replaced, e.g. by hexdump)
+* (curl - or similar, to actually use the signature... [curl < 7.55 would not easily allow multiline headers, though ... --> MORE])
 
 Copyright (c) 2024 Tobias Hoffmann
 

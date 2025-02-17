@@ -23,7 +23,8 @@ _sha256Str() { # data
 }
 
 _hexStr() { # data
-  printf '%s' "$1" | xxd -p -c 256
+  printf '%s' "$1" | xxd -p -c 0
+  #printf '%s' "$1" | hexdump -v -e '/1 "%02x"'
 }
 
 _trimStr() { # string
