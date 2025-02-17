@@ -45,7 +45,7 @@ _uriEncodeStr() { # data [keepSlash=0]
     ch=${1:i:1}
     case "$ch" in
       [-_.~A-Za-z0-9]) printf '%s' "$ch" ;;
-      /) (( $2 != 0 )) && printf '/' || printf '%%2F' ;;
+      /) (( ${2-0} != 0 )) && printf '/' || printf '%%2F' ;;
       *) printf '%%%02X' "'$ch" ;;
     esac
   done
@@ -80,7 +80,7 @@ _sortedHeaders() { # headers
   printf -v sortedHeaders '%s\n' "$(
     local key value
     printf '%s\n' "${headers%$'\n'}" | while IFS=':' read -r key value; do
-      printf '%s:%s\n' "$(_lowercaseStr "$key")" "$(_trimStr "$value")"
+      [[ -n $key ]] && printf '%s:%s\n' "$(_lowercaseStr "$key")" "$(_trimStr "$value")"
     done | sort)"
 }
 

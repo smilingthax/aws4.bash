@@ -5,7 +5,7 @@
 ## Possible TODOs
 * Support any posix shell (`/bin/sh`) w/ local, cut ?
 * Better support for `AWS_SESSION_TOKEN`?  
-  Currently, `X-Amz-Security-Token` must be set manually (headers/query)...
+  Currently, `X-Amz-Security-Token` must be set manually (headers / query[-> _uriEscapeStr !])...
 
 Requires:
 * Bash 3
